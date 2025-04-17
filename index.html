@@ -1,0 +1,209 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row =>
+                    row.some(cell => cell !== '' && cell !== null && cell !== undefined)
+                );
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>아트 갤러리</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --background: #FFEDFA;
+            --nav-bg: #FFB8E0;
+            --highlight: #EC7FA9;
+            --link-hover: #BE5985;
+        }
+        body {
+            background-color: var(--background);
+        }
+        .zoom-image { transition: transform 0.3s ease; }
+        .zoom-image:hover { transform: scale(1.1); }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; }
+        .modal img { max-width: 90%; max-height: 90%; margin: auto; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+    </style>
+</head>
+<body class="font-sans">
+    <!-- 네비게이션 -->
+    <nav class="shadow p-4" style="background-color: var(--nav-bg);">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold" style="color: var(--highlight);">아트 갤러리</h1>
+            <div>
+                <a href="#artworks" class="text-gray-600 hover:text-[var(--link-hover)] mx-2">작품</a>
+                <a href="#artists" class="text-gray-600 hover:text-[var(--link-hover)] mx-2">작가</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 작품 전시 섹션 -->
+    <section id="artworks" class="container mx-auto py-8">
+        <h2 class="text-3xl font-bold mb-4" style="color: var(--highlight);">작품 전시</h2>
+        <!-- 필터 및 정렬 -->
+        <div class="flex justify-between mb-6">
+            <div>
+                <label for="category" class="mr-2">카테고리:</label>
+                <select id="category" class="border p-2 rounded">
+                    <option value="all">전체</option>
+                    <option value="painting">회화</option>
+                    <option value="sculpture">조각</option>
+                    <option value="digital">디지털</option>
+                </select>
+            </div>
+            <div>
+                <label for="sort" class="mr-2">정렬:</label>
+                <select id="sort" class="border p-2 rounded">
+                    <option value="latest">최신순</option>
+                    <option value="popular">인기순</option>
+                    <option value="name">이름순</option>
+                </select>
+            </div>
+        </div>
+        <!-- 작품 그리드 -->
+        <div id="artwork-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </section>
+
+    <!-- 작가 섹션 -->
+    <section id="artists" class="container mx-auto py-8">
+        <h2 class="text-3xl font-bold mb-4" style="color: var(--highlight);">작가 소개</h2>
+        <div id="artist-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </section>
+
+    <!-- 모달 (이미지 확대) -->
+    <div id="modal" class="modal">
+        <img id="modal-image" src="" alt="확대 이미지">
+    </div>
+
+    <script>
+        // 샘플 데이터
+        const artworks = [
+            { id: 1, title: "해바라기", artist: "김철수", year: 2023, medium: "유화", size: "50x70cm", category: "painting", description: "밝은 색상의 해바라기 그림", image: "https://via.placeholder.com/300", popularity: 100 },
+            { id: 2, title: "달빛", artist: "이영희", year: 2022, medium: "디지털", size: "1920x1080px", category: "digital", description: "달빛 아래의 풍경", image: "https://via.placeholder.com/300", popularity: 80 },
+            { id: 3, title: "석상", artist: "박민수", year: 2021, medium: "대리석", size: "100x50x50cm", category: "sculpture", description: "추상적인 석상", image: "https://via.placeholder.com/300", popularity: 60 },
+        ];
+
+        const artists = [
+            { id: 1, name: "김철수", bio: "현대 회화를 탐구하는 작가", portfolio: artworks.filter(a => a.artist === "김철수"), social: "https://instagram.com/kimart", interview: "https://blog.example.com/kim-interview" },
+            { id: 2, name: "이영희", bio: "디지털 아트 전문가", portfolio: artworks.filter(a => a.artist === "이영희"), social: "https://twitter.com/leeart", interview: "https://blog.example.com/lee-interview" },
+            { id: 3, name: "박민수", bio: "조각과 설치미술", portfolio: artworks.filter(a => a.artist === "박민수"), social: "https://facebook.com/parkart", interview: "https://blog.example.com/park-interview" },
+        ];
+
+        // 작품 렌더링
+        function renderArtworks(artworks) {
+            const grid = document.getElementById("artwork-grid");
+            grid.innerHTML = "";
+            artworks.forEach(art => {
+                const card = document.createElement("div");
+                card.className = "shadow rounded overflow-hidden";
+                card.style.backgroundColor = "var(--background)";
+                card.innerHTML = `
+                    <img src="${art.image}" alt="${art.title}" class="w-full h-48 object-cover zoom-image cursor-pointer" onclick="openModal('${art.image}')">
+                    <div class="p-4">
+                        <h3 class="text-lg font-semibold" style="color: var(--highlight);">${art.title}</h3>
+                        <p class="text-gray-600">${art.artist} | ${art.year}</p>
+                        <button onclick="viewArtwork(${art.id})" class="mt-2 text-[var(--nav-bg)] hover:text-[var(--link-hover)]">상세 보기</button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // 작가 렌더링
+        function renderArtists() {
+            const list = document.getElementById("artist-list");
+            list.innerHTML = "";
+            artists.forEach(artist => {
+                const card = document.createElement("div");
+                card.className = "shadow rounded p-4";
+                card.style.backgroundColor = "var(--background)";
+                card.innerHTML = `
+                    <h3 class="text-lg font-semibold" style="color: var(--highlight);">${artist.name}</h3>
+                    <p class="text-gray-600">${artist.bio}</p>
+                    <p><a href="${artist.interview}" target="_blank" class="text-[var(--nav-bg)] hover:text-[var(--link-hover)]">인터뷰 읽기</a></p>
+                    <p><a href="${artist.social}" target="_blank" class="text-[var(--nav-bg)] hover:text-[var(--link-hover)]">소셜 미디어</a></p>
+                    <button onclick="viewArtistPortfolio(${artist.id})" class="mt-2 text-[var(--nav-bg)] hover:text-[var(--link-hover)]">포트폴리오 보기</button>
+                `;
+                list.appendChild(card);
+            });
+        }
+
+        // 모달 열기 (이미지 확대)
+        function openModal(imageSrc) {
+            const modal = document.getElementById("modal");
+            const modalImage = document.getElementById("modal-image");
+            modalImage.src = imageSrc;
+            modal.style.display = "flex";
+            modal.onclick = () => modal.style.display = "none";
+        }
+
+        // 작품 상세 페이지 (간단히 alert로 구현, 실제로는 새 페이지로 이동 가능)
+        function viewArtwork(id) {
+            const art = artworks.find(a => a.id === id);
+            alert(`제목: ${art.title}\n작가: ${art.artist}\n연도: ${art.year}\n크기: ${art.size}\n매체: ${art.medium}\n설명: ${art.description}`);
+        }
+
+        // 작가 포트폴리오 보기
+        function viewArtistPortfolio(id) {
+            const artist = artists.find(a => a.id === id);
+            renderArtworks(artist.portfolio);
+        }
+
+        // 필터링 및 정렬
+        function filterAndSortArtworks() {
+            const category = document.getElementById("category").value;
+            const sort = document.getElementById("sort").value;
+            let filtered = [...artworks];
+            
+            // 카테고리 필터링
+            if (category !== "all") {
+                filtered = filtered.filter(art => art.category === category);
+            }
+
+            // 정렬
+            if (sort === "latest") {
+                filtered.sort((a, b) => b.year - a.year);
+            } else if (sort === "popular") {
+                filtered.sort((a, b) => b.popularity - a.popularity);
+            } else if (sort === "name") {
+                filtered.sort((a, b) => a.title.localeCompare(b.title));
+            }
+
+            renderArtworks(filtered);
+        }
+
+        // 이벤트 리스너
+        document.getElementById("category").addEventListener("change", filterAndSortArtworks);
+        document.getElementById("sort").addEventListener("change", filterAndSortArtworks);
+
+        // 초기 렌더링
+        renderArtworks(artworks);
+        renderArtists();
+    </script>
+</body>
+</html>
